@@ -19,7 +19,7 @@ constexpr float kFovRadians = 0.872664626f; // 50 degrees
 struct Vec3 final { float x, y, z; };
 struct Color final { std::uint8_t r, g, b, a; };
 using detail::Vertex;
-static_assert(sizeof(Vertex) == 16);
+static_assert(sizeof(Vertex) == 32);
 
 [[nodiscard]] Vec3 add(Vec3 a, Vec3 b) noexcept { return {a.x+b.x, a.y+b.y, a.z+b.z}; }
 [[nodiscard]] Vec3 sub(Vec3 a, Vec3 b) noexcept { return {a.x-b.x, a.y-b.y, a.z-b.z}; }
@@ -113,7 +113,7 @@ struct ViewLayout final {
 // world-space width. A ground-plane strip can become sub-pixel when the camera
 // skims across the plane; screen-space extrusion keeps both grid directions legible.
 void append_grid_line(std::vector<Vertex>& vertices, Vec3 a, Vec3 b, Color color,
-                      float half_width_pixels, const CameraBasis& camera,
+                      float half_width_pixels, Vec3 view_normal, const CameraBasis& camera,
                       const ViewLayout& layout) {
     constexpr float clip_depth = kNearPlane + 0.01f;
     float depth_a = dot(sub(a, camera.eye), camera.forward);
@@ -151,7 +151,8 @@ void append_grid_line(std::vector<Vertex>& vertices, Vec3 a, Vec3 b, Color color
     const auto push_vertex = [&](float pixel_x, float pixel_y, float depth) {
         const float ndc_x = 2.0f * pixel_x / layout.width - 1.0f;
         const float ndc_y = viewport::ndc_y_up_from_pixel_y(pixel_y, layout.height);
-        vertices.push_back({ndc_x, ndc_y, depth, color.r, color.g, color.b, color.a});
+        vertices.push_back({ndc_x, ndc_y, depth, color.r, color.g, color.b, color.a,
+                            view_normal.x, view_normal.y, view_normal.z, 0.0f});
     };
 
     // Each endpoint's NDC depth is shared by both sides of the strip.
@@ -171,6 +172,8 @@ void append_grid(std::vector<Vertex>& vertices, const CameraBasis& camera, const
     const double origin_grid_x = std::floor(camera.origin_x);
     const double origin_grid_z = std::floor(camera.origin_z);
     const float relative_ground_y = static_cast<float>(-camera.origin_y - 0.015);
+    // Dot the world-up normal into the camera basis to store it in view space.
+    const Vec3 ground_normal_in_view_space{camera.right.y, camera.up.y, camera.forward.y};
     for (int i = -24; i <= 24; ++i) {
         const float x = static_cast<float>(origin_grid_x + static_cast<double>(i) - camera.origin_x);
         const float z = static_cast<float>(origin_grid_z + static_cast<double>(i) - camera.origin_z);
@@ -183,7 +186,8 @@ void append_grid(std::vector<Vertex>& vertices, const CameraBasis& camera, const
         const float x_width = x_axis ? axis_half_width_pixels
             : (x_major ? major_half_width_pixels : minor_half_width_pixels);
         append_grid_line(vertices, {x, relative_ground_y, -extent},
-                         {x, relative_ground_y, extent}, x_color, x_width, camera, layout);
+                         {x, relative_ground_y, extent}, x_color, x_width,
+                         ground_normal_in_view_space, camera, layout);
 
         const int grid_z_index = static_cast<int>(origin_grid_z) + i;
         const bool z_major = grid_z_index % 5 == 0;
@@ -193,7 +197,8 @@ void append_grid(std::vector<Vertex>& vertices, const CameraBasis& camera, const
         const float z_width = z_axis ? axis_half_width_pixels
             : (z_major ? major_half_width_pixels : minor_half_width_pixels);
         append_grid_line(vertices, {-extent, relative_ground_y + 0.001f, z},
-                         {extent, relative_ground_y + 0.001f, z}, z_color, z_width, camera, layout);
+                         {extent, relative_ground_y + 0.001f, z}, z_color, z_width,
+                         ground_normal_in_view_space, camera, layout);
     }
 }
 } // namespace
@@ -222,6 +227,11 @@ void append_unit_cube_vertices(std::vector<detail::Vertex>& vertices, bool selec
         {{-0.5f,0.0f,0.5f},{-0.5f,0.0f,-0.5f},{-0.5f,1.0f,-0.5f},{-0.5f,1.0f,0.5f}},
         {{0.5f,0.0f,-0.5f},{0.5f,0.0f,0.5f},{0.5f,1.0f,0.5f},{0.5f,1.0f,-0.5f}}
     };
+    static constexpr Vec3 face_normals[6] = {
+        {0.0f, 1.0f, 0.0f}, {0.0f, -1.0f, 0.0f},
+        {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f, 1.0f},
+        {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}
+    };
     static constexpr Color face_colors[6] = {
         {94, 158, 230, 255}, {33, 48, 65, 255}, {65, 125, 188, 255},
         {50, 101, 156, 255}, {45, 88, 137, 255}, {72, 135, 198, 255}
@@ -237,16 +247,17 @@ void append_unit_cube_vertices(std::vector<detail::Vertex>& vertices, bool selec
                      static_cast<std::uint8_t>(std::min(255, static_cast<int>(color.b) + 24)), 255};
         }
 
+        const Vec3 normal = face_normals[face];
         const Vec3 a = faces[face][0];
         const Vec3 b = faces[face][1];
         const Vec3 c = faces[face][2];
         const Vec3 d = faces[face][3];
-        vertices.push_back({a.x, a.y, a.z, color.r, color.g, color.b, color.a});
-        vertices.push_back({b.x, b.y, b.z, color.r, color.g, color.b, color.a});
-        vertices.push_back({c.x, c.y, c.z, color.r, color.g, color.b, color.a});
-        vertices.push_back({a.x, a.y, a.z, color.r, color.g, color.b, color.a});
-        vertices.push_back({c.x, c.y, c.z, color.r, color.g, color.b, color.a});
-        vertices.push_back({d.x, d.y, d.z, color.r, color.g, color.b, color.a});
+        vertices.push_back({a.x, a.y, a.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z, 1.0f});
+        vertices.push_back({b.x, b.y, b.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z, 1.0f});
+        vertices.push_back({c.x, c.y, c.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z, 1.0f});
+        vertices.push_back({a.x, a.y, a.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z, 1.0f});
+        vertices.push_back({c.x, c.y, c.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z, 1.0f});
+        vertices.push_back({d.x, d.y, d.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z, 1.0f});
     }
 }
 

@@ -95,6 +95,24 @@ Matrix4x4 make_view_matrix(const EditorCamera& camera) noexcept {
     return view;
 }
 
+Direction3 transform_direction_to_view_space(
+    const EditorCamera& camera, Direction3 world_direction) noexcept {
+    // Directions have no translation component. Rotate a world-space direction
+    // into view space so light direction does not change as the camera orbits.
+    const Matrix4x4 view = make_view_matrix(camera);
+    return {
+        view.at(0, 0) * world_direction.x +
+            view.at(0, 1) * world_direction.y +
+            view.at(0, 2) * world_direction.z,
+        view.at(1, 0) * world_direction.x +
+            view.at(1, 1) * world_direction.y +
+            view.at(1, 2) * world_direction.z,
+        view.at(2, 0) * world_direction.x +
+            view.at(2, 1) * world_direction.y +
+            view.at(2, 2) * world_direction.z
+    };
+}
+
 Matrix4x4 make_projection_matrix(float aspect_ratio) noexcept {
     const float safe_aspect = std::max(aspect_ratio, 1.0e-4f);
     const float focal_length = 1.0f / std::tan(kFieldOfViewRadians * 0.5f);

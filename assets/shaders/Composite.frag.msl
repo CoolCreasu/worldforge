@@ -1,0 +1,40 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+using namespace metal;
+
+struct CompositeInput {
+    float2 uv [[user(locn0)]];
+};
+struct CompositeOutput {
+    float4 color [[color(0)]];
+};
+fragment CompositeOutput main0(
+    CompositeInput input [[stage_in]],
+    texture2d<float> albedoBuffer [[texture(0)]],
+    texture2d<float> normalBuffer [[texture(1)]],
+    depth2d<float> depthBuffer [[texture(2)]],
+    sampler albedoSampler [[sampler(0)]],
+    sampler normalSampler [[sampler(1)]],
+    sampler depthSampler [[sampler(2)]],
+    constant float4& lightDirection [[buffer(0)]]) {
+    CompositeOutput output = {};
+    float4 albedo = albedoBuffer.sample(albedoSampler, input.uv);
+    float depth = depthBuffer.sample(depthSampler, input.uv);
+    if (depth >= 0.999999) {
+        output.color = albedo;
+        return output;
+    }
+
+    float4 encodedNormal = normalBuffer.sample(normalSampler, input.uv);
+    // Editor grid colors are visual guides, not game-world material colors.
+    if (encodedNormal.a < 0.5) {
+        output.color = albedo;
+        return output;
+    }
+
+    float3 normal = normalize(encodedNormal.xyz * 2.0 - 1.0);
+    float diffuse = max(dot(normal, normalize(lightDirection.xyz)), 0.0);
+    float lightingAmount = 0.28 + 0.72 * diffuse;
+    output.color = float4(albedo.rgb * lightingAmount, albedo.a);
+    return output;
+}

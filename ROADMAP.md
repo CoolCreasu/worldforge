@@ -6,8 +6,8 @@ This is a directional list, not a schedule. Priorities may change as the needs o
 
 - [x] Replace CPU-projected cube vertices with local mesh vertices and GPU-side model/view/projection transforms (grid stays screen-space for stable line widths).
 - [x] Make camera-relative positions explicit in model-matrix construction; subtract fixed-point position minus camera target in double precision before converting to float.
-- [ ] Implement the first deferred geometry pass with base-color/albedo and normal targets plus sampleable hardware depth.
-- [ ] Add a deferred lighting/composition pass.
+- [x] Implement the first deferred geometry pass with base-color/albedo and normal targets plus sampleable hardware depth.
+- [x] Add an initial deferred lighting/composition pass (simple directional diffuse; PBR and material channels remain future work).
 - [ ] Add Direct3D 12/DXIL shader support, or a shader-cross-compilation step, and test the available SDL_GPU backends on real target platforms.
 
 ## World creation

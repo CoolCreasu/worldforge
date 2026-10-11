@@ -5,10 +5,14 @@ using namespace metal;
 struct VertexInput {
     float3 position [[attribute(0)]];
     float4 color [[attribute(1)]];
+    float3 localNormal [[attribute(2)]];
+    float lightingEnabled [[attribute(3)]];
 };
 struct VertexOutput {
     float4 position [[position]];
     float4 color [[user(locn0)]];
+    float3 viewNormal [[user(locn1)]];
+    float lightingEnabled [[user(locn2)]];
 };
 
 vertex VertexOutput main0(
@@ -17,7 +21,11 @@ vertex VertexOutput main0(
     constant float4x4& view [[buffer(1)]],
     constant float4x4& projection [[buffer(2)]]) {
     VertexOutput output = {};
+    float3x3 viewModelLinear = float3x3(view * model);
+    float3x3 normalTransform = transpose(inverse(viewModelLinear));
     output.position = projection * view * model * float4(input.position, 1.0);
     output.color = input.color;
+    output.viewNormal = normalize(normalTransform * input.localNormal);
+    output.lightingEnabled = input.lightingEnabled;
     return output;
 }

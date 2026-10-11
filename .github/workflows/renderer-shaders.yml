@@ -1,0 +1,50 @@
+name: Compile and validate renderer shaders
+
+on:
+  pull_request:
+    paths:
+      - "assets/shaders/**"
+      - "src/render/**"
+      - "CMakeLists.txt"
+      - ".github/workflows/renderer-shaders.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  compile-shaders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the pull request branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install GLSL compiler and SPIR-V validator
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes glslang-tools spirv-tools
+
+      - name: Compile and validate Vulkan shader binaries
+        run: |
+          set -e
+          for shader in Primitive.vert Mesh.vert GBuffer.frag Composite.vert Composite.frag; do
+            glslangValidator -V --target-env vulkan1.0 -S ${shader##*.} \
+              -o "assets/shaders/${shader}.spv" "assets/shaders/${shader}.glsl"
+            spirv-val --target-env vulkan1.0 "assets/shaders/${shader}.spv"
+          done
+
+      - name: Commit generated SPIR-V assets to the pull request branch
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git add assets/shaders/*.spv
+          if git diff --cached --quiet -- assets/shaders; then
+            echo "All checked-in SPIR-V files already match the GLSL sources."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update compiled renderer shaders"
+          git push origin "HEAD:${BRANCH_NAME}"

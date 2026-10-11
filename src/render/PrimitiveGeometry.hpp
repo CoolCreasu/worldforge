@@ -15,9 +15,13 @@ struct Vertex final {
     std::uint8_t g;
     std::uint8_t b;
     std::uint8_t a;
+    float normal_x;
+    float normal_y;
+    float normal_z;
+    float lighting_enabled;
 };
 
-static_assert(sizeof(Vertex) == 16, "GPU vertex layout must remain 16 bytes");
+static_assert(sizeof(Vertex) == 32, "Vertex layout must match the GPU attribute offsets.");
 inline constexpr std::uint32_t kCubeVertexCount = 36;
 
 } // namespace wf::render::detail
@@ -31,8 +35,8 @@ struct SceneViewport final {
     float height = 1.0f;
 };
 
-// Build the editor grid in clip space. Its CPU projection is intentional because
-// grid lines are expanded to a stable thickness in screen pixels.
+// Build the editor grid in clip space. CPU projection is intentional: it keeps
+// grid-line thickness stable in pixels while supplying a view-space ground normal.
 void build_grid_vertices(std::vector<detail::Vertex>& vertices,
                          const EditorCamera& camera,
                          float window_width,
