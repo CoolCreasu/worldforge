@@ -186,7 +186,8 @@ void append_grid(std::vector<Vertex>& vertices, const CameraBasis& camera, const
         const float x_width = x_axis ? axis_half_width_pixels
             : (x_major ? major_half_width_pixels : minor_half_width_pixels);
         append_grid_line(vertices, {x, relative_ground_y, -extent},
-                         {x, relative_ground_y, extent}, x_color, x_width, camera, layout);
+                         {x, relative_ground_y, extent}, x_color, x_width,
+                         ground_normal_in_view_space, camera, layout);
 
         const int grid_z_index = static_cast<int>(origin_grid_z) + i;
         const bool z_major = grid_z_index % 5 == 0;
@@ -196,7 +197,8 @@ void append_grid(std::vector<Vertex>& vertices, const CameraBasis& camera, const
         const float z_width = z_axis ? axis_half_width_pixels
             : (z_major ? major_half_width_pixels : minor_half_width_pixels);
         append_grid_line(vertices, {-extent, relative_ground_y + 0.001f, z},
-                         {extent, relative_ground_y + 0.001f, z}, z_color, z_width, camera, layout);
+                         {extent, relative_ground_y + 0.001f, z}, z_color, z_width,
+                         ground_normal_in_view_space, camera, layout);
     }
 }
 } // namespace
