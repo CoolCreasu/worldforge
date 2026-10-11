@@ -4,7 +4,8 @@ Worldforge is intentionally organized by responsibility rather than by a generic
 
 ## Application lifecycle
 
-- `src/app/main.cpp` contains SDL3's callback entry points, startup/shutdown, and frame submission.
+- `src/app/main.cpp` contains only SDL3's callback entry points and forwards them to the application object.
+- `src/app/application.hpp` and `src/app/application.cpp` own application initialization, shutdown, the event queue, and frame rendering.
 - `src/editor/editorstate.hpp` holds state shared by the editor modules.
 - `src/editor/editorinput.cpp` handles keyboard/mouse events, selection and drag interaction.
 - `src/editor/editorui.cpp` builds the Dear ImGui toolbar, outliner, inspector and status bar.

@@ -90,7 +90,7 @@ The source tree must contain `imgui.cpp` and `backends/imgui_impl_sdlgpu3.cpp`.
 
 ## Code layout
 
-The implementation is split by responsibility: SDL lifecycle in `src/app/main.cpp`, editor state and interaction in `src/editor/`, GPU resource management in `src/render/primitiverenderer.cpp`, and transitional CPU geometry/picking in `src/render/primitivegeometry.cpp`. See [Code structure](docs/CODE_STRUCTURE.md) for the module map and intended boundaries.
+The implementation is split by responsibility: `src/app/main.cpp` is a thin SDL callback adapter, while `src/app/application.cpp` owns application startup, event handling, frame rendering, and shutdown. Editor state and interaction live in `src/editor/`, GPU resource management in `src/render/primitiverenderer.cpp`, and transitional CPU geometry/picking in `src/render/primitivegeometry.cpp`. See [Code structure](docs/CODE_STRUCTURE.md) for the module map and intended boundaries.
 
 ## Controls
 
