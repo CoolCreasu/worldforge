@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   compile-mesh-shader:
@@ -15,35 +15,22 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install SPIR-V shader compiler and validator
         run: |
           sudo apt-get update
           sudo apt-get install --yes glslang-tools spirv-tools
 
-      - name: Compile and validate shader
+      - name: Compile, compare, and validate shader
         run: |
+          mkdir -p build/shaders
           glslangValidator -V --target-env vulkan1.0 -S vert \
-            -o assets/shaders/Mesh.vert.spv assets/shaders/Mesh.vert.glsl
+            -o build/shaders/Mesh.vert.spv assets/shaders/Mesh.vert.glsl
+          cmp --silent build/shaders/Mesh.vert.spv assets/shaders/Mesh.vert.spv || {
+            echo "Mesh.vert.spv is stale. Regenerate it from Mesh.vert.glsl and include the binary in this change."
+            exit 1
+          }
           spirv-val --target-env vulkan1.0 assets/shaders/Mesh.vert.spv
-
-      - name: Commit generated shader to the pull request branch
-        if: github.event_name == 'pull_request'
-        env:
-          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
-        run: |
-          git add assets/shaders/Mesh.vert.spv
-          if git diff --cached --quiet -- assets/shaders/Mesh.vert.spv; then
-            echo "Compiled shader is already up to date."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Add compiled mesh vertex shader"
-          git push origin "HEAD:${BRANCH_NAME}"
 
   core-tests:
     name: Core tests (${{ matrix.os }})
