@@ -80,3 +80,6 @@ Resize the G-buffer textures with the viewport, not necessarily the full window.
 The editor grid is deliberately **unlit**: its colors communicate axes and spacing, so they must not darken as the camera orbits. Until materials have their own properties, the normal target's alpha temporarily records a per-vertex lighting flag (0 = unlit grid, 1 = lit geometry). Replace this transitional flag with an explicit material model when materials are introduced.
 
 The directional light is defined in world space and transformed into view space every frame. This prevents the light itself from rotating with the camera. The ambient-plus-diffuse shader remains a deliberately simple baseline rather than the final PBR lighting model.
+
+
+The light vector represents the direction from a surface toward the light source. Because the G-buffer stores view-space normals, the CPU rotates that world-space direction into view space before pushing it to the composition shader. This keeps the normal/light dot product stable under camera orbit.
