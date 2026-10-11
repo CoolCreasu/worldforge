@@ -1,4 +1,5 @@
 #include "math/Fixed16.hpp"
+#include "render/ViewportCoordinates.hpp"
 #include "math/Transform.hpp"
 #include "world/SceneIO.hpp"
 
@@ -32,6 +33,15 @@ void check_throws(F&& fn, const char* message) {
 
 int main() {
     using wf::math::Fixed16;
+
+    // SDL_GPU's clip-space Y convention must agree with top-left-origin editor input.
+    check(wf::render::viewport::clip_y_from_window_y(0.0f, 100.0f) == -1.0f,
+          "top of window maps to top clip edge");
+    check(wf::render::viewport::clip_y_from_window_y(100.0f, 100.0f) == 1.0f,
+          "bottom of window maps to bottom clip edge");
+    check(std::abs(wf::render::viewport::window_y_from_clip_y(
+                       wf::render::viewport::clip_y_from_window_y(23.0f, 100.0f), 100.0f) - 23.0f) < 1e-4f,
+          "window/clip Y conversion round trip");
 
     const auto one = Fixed16::from_int(1);
     const auto half = Fixed16::from_double(0.5);
