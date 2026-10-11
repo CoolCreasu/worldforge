@@ -1,8 +1,8 @@
-#include "editor/EditorInput.hpp"
+#include "editor/editorinput.hpp"
 
-#include "editor/SceneEditor.hpp"
+#include "editor/sceneeditor.hpp"
 
-#include "math/Transform.hpp"
+#include "math/transform.hpp"
 
 #include "imgui.h"
 

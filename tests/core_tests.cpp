@@ -1,8 +1,8 @@
-#include "math/Fixed16.hpp"
-#include "render/ViewportCoordinates.hpp"
-#include "render/RenderTransforms.hpp"
-#include "math/Transform.hpp"
-#include "world/SceneIO.hpp"
+#include "math/fixed16.hpp"
+#include "render/viewportcoordinates.hpp"
+#include "render/rendertransforms.hpp"
+#include "math/transform.hpp"
+#include "world/sceneio.hpp"
 
 #include <cmath>
 #include <filesystem>

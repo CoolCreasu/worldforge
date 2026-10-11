@@ -1,6 +1,6 @@
 #pragma once
 
-#include "render/EditorCamera.hpp"
+#include "render/editorcamera.hpp"
 
 #include <cstdint>
 #include <vector>

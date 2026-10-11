@@ -1,7 +1,7 @@
 #pragma once
 
-#include "world/SceneDocument.hpp"
-#include "render/EditorCamera.hpp"
+#include "world/scenedocument.hpp"
+#include "render/editorcamera.hpp"
 
 #include <SDL3/SDL.h>
 

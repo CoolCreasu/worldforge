@@ -1,4 +1,4 @@
-#include "render/GBuffer.hpp"
+#include "render/gbuffer.hpp"
 
 namespace wf::render {
 namespace {

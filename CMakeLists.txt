@@ -13,8 +13,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Scene data and fixed-point math deliberately have no SDL or editor-UI dependency.
 add_library(worldforge_core STATIC
-    src/world/SceneIO.cpp
-    src/render/RenderTransforms.cpp
+    src/world/sceneio.cpp
+    src/render/rendertransforms.cpp
 )
 target_include_directories(worldforge_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_compile_features(worldforge_core PUBLIC cxx_std_20)
@@ -102,13 +102,14 @@ if(WORLDFORGE_BUILD_APP)
     endif()
 
     add_executable(worldforge
-        src/app/Main.cpp
-        src/editor/SceneEditor.cpp
-        src/editor/EditorInput.cpp
-        src/editor/EditorUI.cpp
-        src/render/PrimitiveRenderer.cpp
-        src/render/PrimitiveGeometry.cpp
-        src/render/GBuffer.cpp
+        src/app/main.cpp
+        src/app/application.cpp
+        src/editor/sceneeditor.cpp
+        src/editor/editorinput.cpp
+        src/editor/editorui.cpp
+        src/render/primitiverenderer.cpp
+        src/render/primitivegeometry.cpp
+        src/render/gbuffer.cpp
     )
     target_link_libraries(worldforge PRIVATE
         SDL3::SDL3
@@ -118,7 +119,7 @@ if(WORLDFORGE_BUILD_APP)
     )
     target_compile_features(worldforge PRIVATE cxx_std_20)
 
-    # SDL_main.h belongs in Main.cpp only: SDL owns the entry loop on platforms
+    # SDL_main.h belongs in main.cpp only: SDL owns the entry loop on platforms
     # that use the callback-style application lifecycle.
     if(MSVC)
         target_compile_options(worldforge PRIVATE /W4 /permissive-)

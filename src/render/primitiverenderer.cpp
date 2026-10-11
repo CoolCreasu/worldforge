@@ -1,8 +1,8 @@
-#include "render/PrimitiveRenderer.hpp"
+#include "render/primitiverenderer.hpp"
 
-#include "render/PrimitiveGeometry.hpp"
-#include "render/RenderTransforms.hpp"
-#include "render/GBuffer.hpp"
+#include "render/primitivegeometry.hpp"
+#include "render/rendertransforms.hpp"
+#include "render/gbuffer.hpp"
 
 #include <algorithm>
 #include <array>

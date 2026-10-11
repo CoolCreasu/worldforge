@@ -1,7 +1,7 @@
-#include "editor/SceneEditor.hpp"
+#include "editor/sceneeditor.hpp"
 
-#include "math/Fixed16.hpp"
-#include "math/Transform.hpp"
+#include "math/fixed16.hpp"
+#include "math/transform.hpp"
 
 #include <algorithm>
 #include <cmath>

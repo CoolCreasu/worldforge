@@ -1,6 +1,6 @@
 #pragma once
 
-#include "editor/EditorState.hpp"
+#include "editor/editorstate.hpp"
 
 namespace wf::editor {
 
