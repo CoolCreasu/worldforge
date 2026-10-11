@@ -156,30 +156,93 @@ void append_world_quad(std::vector<Vertex>& vertices, Vec3 a, Vec3 b, Vec3 c, Ve
     append_triangle(vertices, a, c, d, color, camera, layout);
 }
 
+// Grid strips are extruded in screen space instead of relying on a very thin
+// world-space width. A ground-plane strip can become sub-pixel when the camera
+// skims across the plane; screen-space extrusion keeps both grid directions legible.
+void append_grid_line(std::vector<Vertex>& vertices, Vec3 a, Vec3 b, Color color,
+                      float half_width_pixels, const CameraBasis& camera,
+                      const ViewLayout& layout) {
+    constexpr float clip_depth = kNearPlane + 0.01f;
+    float depth_a = dot(sub(a, camera.eye), camera.forward);
+    float depth_b = dot(sub(b, camera.eye), camera.forward);
+    if (!std::isfinite(depth_a) || !std::isfinite(depth_b) ||
+        (depth_a <= clip_depth && depth_b <= clip_depth)) {
+        return;
+    }
+
+    // Clip a line crossing the near plane before projection to avoid enormous or
+    // invalid screen coordinates when orbiting close to the grid.
+    if (depth_a <= clip_depth) {
+        const float t = (clip_depth - depth_a) / (depth_b - depth_a);
+        a = add(a, mul(sub(b, a), t));
+        depth_a = clip_depth;
+    } else if (depth_b <= clip_depth) {
+        const float t = (clip_depth - depth_b) / (depth_a - depth_b);
+        b = add(b, mul(sub(a, b), t));
+        depth_b = clip_depth;
+    }
+
+    const ProjectedPoint pa = project_point(a, camera, layout);
+    const ProjectedPoint pb = project_point(b, camera, layout);
+    const float ax = (pa.x + 1.0f) * 0.5f * layout.width;
+    const float ay = viewport::pixel_y_from_ndc_y_up(pa.y, layout.height);
+    const float bx = (pb.x + 1.0f) * 0.5f * layout.width;
+    const float by = viewport::pixel_y_from_ndc_y_up(pb.y, layout.height);
+    const float dx = bx - ax;
+    const float dy = by - ay;
+    const float length = std::sqrt(dx * dx + dy * dy);
+    if (!(length > 0.25f) || !std::isfinite(length)) return;
+
+    const float offset_x = -dy / length * half_width_pixels;
+    const float offset_y = dx / length * half_width_pixels;
+    const auto push_vertex = [&](float pixel_x, float pixel_y, float depth) {
+        const float ndc_x = 2.0f * pixel_x / layout.width - 1.0f;
+        const float ndc_y = viewport::ndc_y_up_from_pixel_y(pixel_y, layout.height);
+        vertices.push_back({ndc_x, ndc_y, depth, color.r, color.g, color.b, color.a});
+    };
+
+    // Each endpoint's NDC depth is shared by both sides of the strip.
+    push_vertex(ax + offset_x, ay + offset_y, pa.depth);
+    push_vertex(bx + offset_x, by + offset_y, pb.depth);
+    push_vertex(bx - offset_x, by - offset_y, pb.depth);
+    push_vertex(ax + offset_x, ay + offset_y, pa.depth);
+    push_vertex(bx - offset_x, by - offset_y, pb.depth);
+    push_vertex(ax - offset_x, ay - offset_y, pa.depth);
+}
+
 void append_grid(std::vector<Vertex>& vertices, const CameraBasis& camera, const ViewLayout& layout) {
     constexpr float extent = 24.0f;
-    constexpr float half_width = 0.008f;
+    constexpr float minor_half_width_pixels = 0.65f;
+    constexpr float major_half_width_pixels = 0.90f;
+    constexpr float axis_half_width_pixels = 1.15f;
     const double origin_grid_x = std::floor(camera.origin_x);
     const double origin_grid_z = std::floor(camera.origin_z);
     const float relative_ground_y = static_cast<float>(-camera.origin_y - 0.015);
     for (int i = -24; i <= 24; ++i) {
         const float x = static_cast<float>(origin_grid_x + static_cast<double>(i) - camera.origin_x);
         const float z = static_cast<float>(origin_grid_z + static_cast<double>(i) - camera.origin_z);
-        const bool major = (static_cast<int>(origin_grid_x) + i) % 5 == 0;
-        Color color = major ? Color{51, 63, 78, 255} : Color{37, 46, 58, 255};
-        if (static_cast<int>(origin_grid_x) + i == 0) color = {95, 67, 63, 255};
-        append_world_quad(vertices,
-            {x-half_width, relative_ground_y, -extent}, {x+half_width, relative_ground_y, -extent},
-            {x+half_width, relative_ground_y, extent}, {x-half_width, relative_ground_y, extent}, color, camera, layout);
-        Color z_color = (((static_cast<int>(origin_grid_z) + i) % 5) == 0)
-            ? Color{51, 63, 78, 255} : Color{37, 46, 58, 255};
-        if (static_cast<int>(origin_grid_z) + i == 0) z_color = {53, 81, 112, 255};
-        append_world_quad(vertices,
-            {-extent, relative_ground_y + 0.001f, z-half_width}, {extent, relative_ground_y + 0.001f, z-half_width},
-            {extent, relative_ground_y + 0.001f, z+half_width}, {-extent, relative_ground_y + 0.001f, z+half_width}, z_color, camera, layout);
+
+        const int grid_x_index = static_cast<int>(origin_grid_x) + i;
+        const bool x_major = grid_x_index % 5 == 0;
+        const bool x_axis = grid_x_index == 0;
+        Color x_color = x_major ? Color{51, 63, 78, 255} : Color{37, 46, 58, 255};
+        if (x_axis) x_color = {95, 67, 63, 255};
+        const float x_width = x_axis ? axis_half_width_pixels
+            : (x_major ? major_half_width_pixels : minor_half_width_pixels);
+        append_grid_line(vertices, {x, relative_ground_y, -extent},
+                         {x, relative_ground_y, extent}, x_color, x_width, camera, layout);
+
+        const int grid_z_index = static_cast<int>(origin_grid_z) + i;
+        const bool z_major = grid_z_index % 5 == 0;
+        const bool z_axis = grid_z_index == 0;
+        Color z_color = z_major ? Color{51, 63, 78, 255} : Color{37, 46, 58, 255};
+        if (z_axis) z_color = {53, 81, 112, 255};
+        const float z_width = z_axis ? axis_half_width_pixels
+            : (z_major ? major_half_width_pixels : minor_half_width_pixels);
+        append_grid_line(vertices, {-extent, relative_ground_y + 0.001f, z},
+                         {extent, relative_ground_y + 0.001f, z}, z_color, z_width, camera, layout);
     }
 }
-
 void append_cube(std::vector<Vertex>& vertices, const world::ObjectInstance& object,
                  bool selected, const CameraBasis& camera, const ViewLayout& layout) {
     // A unit cube with its origin on the bottom face, so y=0 means resting on the grid.
