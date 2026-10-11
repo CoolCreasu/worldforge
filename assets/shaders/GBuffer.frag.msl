@@ -9,10 +9,12 @@ struct GeometryOutput {
 struct GeometryInput {
     float4 color [[user(locn0)]];
     float3 viewNormal [[user(locn1)]];
+    float lightingEnabled [[user(locn2)]];
 };
 fragment GeometryOutput main0(GeometryInput input [[stage_in]]) {
     GeometryOutput output = {};
     output.albedo = input.color;
-    output.normal = float4(normalize(input.viewNormal) * 0.5 + 0.5, 1.0);
+    // Normal target alpha temporarily distinguishes the unlit grid from lit geometry.
+    output.normal = float4(normalize(input.viewNormal) * 0.5 + 0.5, input.lightingEnabled);
     return output;
 }
