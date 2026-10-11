@@ -19,7 +19,7 @@ constexpr std::uint32_t kInitialVertexCapacity = 65'536;
 constexpr std::uint32_t kMaximumVertexCapacity = 1'500'000;
 constexpr std::size_t kUploadBufferCount = 3;
 using detail::Vertex;
-static_assert(sizeof(Vertex) == 28);
+static_assert(sizeof(Vertex) == 32);
 
 [[nodiscard]] SDL_GPUShader* load_shader(SDL_GPUDevice* device, const char* path,
                                          SDL_GPUShaderStage stage, SDL_GPUShaderFormat format,
@@ -73,6 +73,10 @@ static_assert(sizeof(Vertex) == 28);
     attributes[2].buffer_slot = 0;
     attributes[2].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
     attributes[2].offset = 16;
+    attributes[3].location = 3;
+    attributes[3].buffer_slot = 0;
+    attributes[3].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT;
+    attributes[3].offset = 28;
 
     SDL_GPUGraphicsPipelineCreateInfo info{};
     info.vertex_shader = vertex_shader;
@@ -81,7 +85,7 @@ static_assert(sizeof(Vertex) == 28);
     info.vertex_input_state.vertex_buffer_descriptions = &vertex_buffer;
     info.vertex_input_state.num_vertex_buffers = 1;
     info.vertex_input_state.vertex_attributes = attributes;
-    info.vertex_input_state.num_vertex_attributes = 3;
+    info.vertex_input_state.num_vertex_attributes = 4;
     info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
     info.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;
     info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
@@ -179,7 +183,7 @@ bool PrimitiveRenderer::initialize(SDL_GPUDevice* device, SDL_Window* window, st
         impl_->shader_entrypoint);
     SDL_GPUShader* composite_fragment = load_shader(
         device, composite_fragment_path, SDL_GPU_SHADERSTAGE_FRAGMENT, impl_->shader_format,
-        impl_->shader_entrypoint, 0, 3);
+        impl_->shader_entrypoint, 1, 3);
 
     if (!grid_vertex || !mesh_vertex || !geometry_fragment || !composite_vertex || !composite_fragment) {
         if (grid_vertex) SDL_ReleaseGPUShader(device, grid_vertex);
@@ -419,6 +423,14 @@ bool PrimitiveRenderer::render(SDL_GPUCommandBuffer* command_buffer,
         return false;
     }
     SDL_BindGPUGraphicsPipeline(composition_pass, impl_->composite_pipeline);
+
+    const detail::Direction3 light_in_view_space =
+        detail::transform_direction_to_view_space(camera, {-0.35f, 0.75f, 0.55f});
+    alignas(16) const std::array<float, 4> light_direction_uniform{
+        light_in_view_space.x, light_in_view_space.y, light_in_view_space.z, 0.0f};
+    SDL_PushGPUFragmentUniformData(command_buffer, 0, light_direction_uniform.data(),
+                                  static_cast<Uint32>(sizeof(light_direction_uniform)));
+
     SDL_GPUTextureSamplerBinding sampled_buffers[3]{};
     sampled_buffers[0].texture = impl_->gbuffer.albedo_texture();
     sampled_buffers[0].sampler = impl_->gbuffer_sampler;

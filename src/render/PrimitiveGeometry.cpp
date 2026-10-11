@@ -19,7 +19,7 @@ constexpr float kFovRadians = 0.872664626f; // 50 degrees
 struct Vec3 final { float x, y, z; };
 struct Color final { std::uint8_t r, g, b, a; };
 using detail::Vertex;
-static_assert(sizeof(Vertex) == 28);
+static_assert(sizeof(Vertex) == 32);
 
 [[nodiscard]] Vec3 add(Vec3 a, Vec3 b) noexcept { return {a.x+b.x, a.y+b.y, a.z+b.z}; }
 [[nodiscard]] Vec3 sub(Vec3 a, Vec3 b) noexcept { return {a.x-b.x, a.y-b.y, a.z-b.z}; }
@@ -152,7 +152,7 @@ void append_grid_line(std::vector<Vertex>& vertices, Vec3 a, Vec3 b, Color color
         const float ndc_x = 2.0f * pixel_x / layout.width - 1.0f;
         const float ndc_y = viewport::ndc_y_up_from_pixel_y(pixel_y, layout.height);
         vertices.push_back({ndc_x, ndc_y, depth, color.r, color.g, color.b, color.a,
-                            view_normal.x, view_normal.y, view_normal.z});
+                            view_normal.x, view_normal.y, view_normal.z, 0.0f});
     };
 
     // Each endpoint's NDC depth is shared by both sides of the strip.
@@ -252,12 +252,12 @@ void append_unit_cube_vertices(std::vector<detail::Vertex>& vertices, bool selec
         const Vec3 b = faces[face][1];
         const Vec3 c = faces[face][2];
         const Vec3 d = faces[face][3];
-        vertices.push_back({a.x, a.y, a.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z});
-        vertices.push_back({b.x, b.y, b.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z});
-        vertices.push_back({c.x, c.y, c.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z});
-        vertices.push_back({a.x, a.y, a.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z});
-        vertices.push_back({c.x, c.y, c.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z});
-        vertices.push_back({d.x, d.y, d.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z});
+        vertices.push_back({a.x, a.y, a.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z, 1.0f});
+        vertices.push_back({b.x, b.y, b.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z, 1.0f});
+        vertices.push_back({c.x, c.y, c.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z, 1.0f});
+        vertices.push_back({a.x, a.y, a.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z, 1.0f});
+        vertices.push_back({c.x, c.y, c.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z, 1.0f});
+        vertices.push_back({d.x, d.y, d.z, color.r, color.g, color.b, color.a, normal.x, normal.y, normal.z, 1.0f});
     }
 }
 

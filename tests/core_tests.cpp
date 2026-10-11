@@ -61,6 +61,14 @@ int main() {
     check(projection.at(0, 0) > 0.0f && projection.at(1, 1) > 0.0f &&
           projection.at(2, 2) > 0.0f && projection.at(3, 2) == 1.0f,
           "projection matrix uses perspective with forward-positive depth");
+    const wf::render::detail::Direction3 world_up{0.0f, 1.0f, 0.0f};
+    const wf::render::detail::Direction3 world_light{-0.35f, 0.75f, 0.55f};
+    const auto view_up = wf::render::detail::transform_direction_to_view_space(test_camera, world_up);
+    const auto view_light = wf::render::detail::transform_direction_to_view_space(test_camera, world_light);
+    const float world_dot = world_up.x * world_light.x + world_up.y * world_light.y + world_up.z * world_light.z;
+    const float view_dot = view_up.x * view_light.x + view_up.y * view_light.y + view_up.z * view_light.z;
+    check(std::abs(world_dot - view_dot) < 1.0e-4f,
+          "camera view rotation preserves directional-light dot products");
 
     wf::world::ObjectInstance transform_test_object;
     transform_test_object.transform.position = {Fixed16::from_double(100.25),

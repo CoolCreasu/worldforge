@@ -73,3 +73,10 @@ Resize the G-buffer textures with the viewport, not necessarily the full window.
 - The vertex shader applies transforms; scene documents remain independent of GPU types.
 - `GBuffer` owns the albedo, normal, and sampleable depth textures, including resize and failure cleanup. `PrimitiveRenderer` coordinates the geometry pass and the fullscreen composition pass.
 - The first deferred composition shader uses a small ambient term plus directional diffuse lighting; it is a validation baseline, not the eventual PBR model.
+
+
+## Editor grid and initial lighting
+
+The editor grid is deliberately **unlit**: its colors communicate axes and spacing, so they must not darken as the camera orbits. Until materials have their own properties, the normal target's alpha temporarily records a per-vertex lighting flag (0 = unlit grid, 1 = lit geometry). Replace this transitional flag with an explicit material model when materials are introduced.
+
+The directional light is defined in world space and transformed into view space every frame. This prevents the light itself from rotating with the camera. The ambient-plus-diffuse shader remains a deliberately simple baseline rather than the final PBR lighting model.

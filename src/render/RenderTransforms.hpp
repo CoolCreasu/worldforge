@@ -21,6 +21,14 @@ struct Matrix4x4 final {
 };
 static_assert(sizeof(Matrix4x4) == 64);
 
+struct Direction3 final {
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
+};
+
+[[nodiscard]] Direction3 transform_direction_to_view_space(
+    const EditorCamera& camera, Direction3 world_direction) noexcept;
 [[nodiscard]] Matrix4x4 make_model_matrix(const world::ObjectInstance& object,
                                            const EditorCamera& camera) noexcept;
 [[nodiscard]] Matrix4x4 make_view_matrix(const EditorCamera& camera) noexcept;

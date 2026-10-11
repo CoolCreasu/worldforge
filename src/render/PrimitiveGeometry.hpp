@@ -18,9 +18,10 @@ struct Vertex final {
     float normal_x;
     float normal_y;
     float normal_z;
+    float lighting_enabled;
 };
 
-static_assert(sizeof(Vertex) == 28, "GPU vertex layout must remain 16 bytes");
+static_assert(sizeof(Vertex) == 32, "Vertex layout must match the GPU attribute offsets.");
 inline constexpr std::uint32_t kCubeVertexCount = 36;
 
 } // namespace wf::render::detail
