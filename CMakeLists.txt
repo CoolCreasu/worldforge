@@ -102,7 +102,11 @@ if(WORLDFORGE_BUILD_APP)
 
     add_executable(worldforge
         src/app/Main.cpp
+        src/editor/SceneEditor.cpp
+        src/editor/EditorInput.cpp
+        src/editor/EditorUI.cpp
         src/render/PrimitiveRenderer.cpp
+        src/render/PrimitiveGeometry.cpp
     )
     target_link_libraries(worldforge PRIVATE
         SDL3::SDL3
