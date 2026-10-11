@@ -103,9 +103,9 @@ struct ViewLayout final {
     const float px = (ndc_x * 0.5f + 0.5f) * layout.viewport_width;
     const float py = layout.top + (0.5f - ndc_y * 0.5f) * layout.viewport_height;
     const float x = 2.0f * px / layout.width - 1.0f;
-    // SDL_GPU viewport coordinates use NDC Y=-1 at the top edge. Window Y is
-    // top-left-origin, so the conversion must preserve top-to-top and bottom-to-bottom.
-    const float y = viewport::clip_y_from_window_y(py, layout.height);
+    // Pixel coordinates increase downward; SDL_GPU NDC Y increases upward.
+    // Convert the pixel position so a point at the top maps to NDC Y=+1.
+    const float y = viewport::ndc_y_up_from_pixel_y(py, layout.height);
     const bool inside = ndc_x >= -1.5f && ndc_x <= 1.5f && ndc_y >= -1.5f && ndc_y <= 1.5f &&
                         view_z < kFarPlane;
     return {x, y, depth, inside};
@@ -237,7 +237,7 @@ ProjectedPoint PrimitiveRenderer::project_to_window(double x, double y, double z
                                   static_cast<float>(z-camera.target_z)},basis,layout);
     // UI and picking coordinates are in top-left-origin window points.
     const float screen_x = (p.x+1.0f)*0.5f*static_cast<float>(width);
-    const float screen_y = viewport::window_y_from_clip_y(p.y, static_cast<float>(height));
+    const float screen_y = viewport::pixel_y_from_ndc_y_up(p.y, static_cast<float>(height));
     return {screen_x,screen_y,p.depth,p.visible};
 }
 
@@ -252,7 +252,7 @@ bool PrimitiveRenderer::window_to_ground(float mouse_x, float mouse_y, int width
     const float aspect = layout.viewport_width / layout.viewport_height;
     const float f = 1.0f / std::tan(kFovRadians * 0.5f);
     const float ndc_x = 2.0f * mouse_x / layout.viewport_width - 1.0f;
-    const float ndc_y = 1.0f - 2.0f * (mouse_y - layout.top) / layout.viewport_height;
+    const float ndc_y = viewport::ndc_y_up_from_pixel_y(mouse_y - layout.top, layout.viewport_height);
     const Vec3 ray = normalize(add(basis.forward,
         add(mul(basis.right, ndc_x * aspect / f), mul(basis.up, ndc_y / f))));
     if (std::abs(ray.y) < 1.0e-5f) return false;
