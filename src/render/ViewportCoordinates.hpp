@@ -2,15 +2,17 @@
 
 namespace wf::render::viewport {
 
-// SDL_GPU window/viewport coordinates are top-left-origin. In the clip-space
-// convention used by this renderer, NDC Y=-1 maps to the top edge and Y=+1
-// maps to the bottom edge. Keep these conversions shared by rendering and picking.
-[[nodiscard]] constexpr float clip_y_from_window_y(float window_y, float window_height) noexcept {
-    return (2.0f * window_y / window_height) - 1.0f;
+// SDL_GPU uses Y-up normalized device coordinates but Y-down pixel coordinates.
+// Therefore the top pixel row maps to NDC +1 and the bottom row maps to NDC -1.
+// These helpers are shared by projection, screen-space selection, and input rays.
+[[nodiscard]] constexpr float ndc_y_up_from_pixel_y(float pixel_y,
+                                                    float target_height) noexcept {
+    return 1.0f - (2.0f * pixel_y / target_height);
 }
 
-[[nodiscard]] constexpr float window_y_from_clip_y(float clip_y, float window_height) noexcept {
-    return (clip_y + 1.0f) * 0.5f * window_height;
+[[nodiscard]] constexpr float pixel_y_from_ndc_y_up(float ndc_y,
+                                                    float target_height) noexcept {
+    return (1.0f - ndc_y) * 0.5f * target_height;
 }
 
 } // namespace wf::render::viewport

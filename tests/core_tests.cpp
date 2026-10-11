@@ -34,14 +34,20 @@ void check_throws(F&& fn, const char* message) {
 int main() {
     using wf::math::Fixed16;
 
-    // SDL_GPU's clip-space Y convention must agree with top-left-origin editor input.
-    check(wf::render::viewport::clip_y_from_window_y(0.0f, 100.0f) == -1.0f,
-          "top of window maps to top clip edge");
-    check(wf::render::viewport::clip_y_from_window_y(100.0f, 100.0f) == 1.0f,
-          "bottom of window maps to bottom clip edge");
-    check(std::abs(wf::render::viewport::window_y_from_clip_y(
-                       wf::render::viewport::clip_y_from_window_y(23.0f, 100.0f), 100.0f) - 23.0f) < 1e-4f,
-          "window/clip Y conversion round trip");
+    // SDL_GPU NDC is Y-up; viewport/input pixels are top-left-origin and Y-down.
+    check(wf::render::viewport::ndc_y_up_from_pixel_y(0.0f, 100.0f) == 1.0f,
+          "top pixel row maps to NDC Y=+1");
+    check(wf::render::viewport::ndc_y_up_from_pixel_y(100.0f, 100.0f) == -1.0f,
+          "bottom pixel row maps to NDC Y=-1");
+    check(wf::render::viewport::pixel_y_from_ndc_y_up(1.0f, 100.0f) == 0.0f,
+          "NDC top edge maps to the top pixel row");
+    check(wf::render::viewport::pixel_y_from_ndc_y_up(-1.0f, 100.0f) == 100.0f,
+          "NDC bottom edge maps to the bottom pixel row");
+    check(wf::render::viewport::pixel_y_from_ndc_y_up(0.5f, 100.0f) < 50.0f,
+          "positive NDC Y is above the screen center");
+    check(std::abs(wf::render::viewport::pixel_y_from_ndc_y_up(
+                       wf::render::viewport::ndc_y_up_from_pixel_y(23.0f, 100.0f), 100.0f) - 23.0f) < 1e-4f,
+          "pixel/NDC Y conversion round trip");
 
     const auto one = Fixed16::from_int(1);
     const auto half = Fixed16::from_double(0.5);
