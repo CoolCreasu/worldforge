@@ -60,7 +60,7 @@ static_assert(sizeof(Vertex) == 32);
     vertex_buffer.slot = 0;
     vertex_buffer.pitch = sizeof(Vertex);
     vertex_buffer.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
-    SDL_GPUVertexAttribute attributes[3]{};
+    SDL_GPUVertexAttribute attributes[4]{};
     attributes[0].location = 0;
     attributes[0].buffer_slot = 0;
     attributes[0].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
