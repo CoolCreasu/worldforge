@@ -1,5 +1,6 @@
 #include "math/Fixed16.hpp"
 #include "render/ViewportCoordinates.hpp"
+#include "render/RenderTransforms.hpp"
 #include "math/Transform.hpp"
 #include "world/SceneIO.hpp"
 
@@ -48,6 +49,32 @@ int main() {
     check(std::abs(wf::render::viewport::pixel_y_from_ndc_y_up(
                        wf::render::viewport::ndc_y_up_from_pixel_y(23.0f, 100.0f), 100.0f) - 23.0f) < 1e-4f,
           "pixel/NDC Y conversion round trip");
+
+    // The target is on the camera's viewing axis and must project to screen center.
+    const wf::render::EditorCamera test_camera{};
+    const auto view = wf::render::detail::make_view_matrix(test_camera);
+    const auto projection = wf::render::detail::make_projection_matrix(16.0f / 9.0f);
+    check(std::abs(view.at(0, 3)) < 1.0e-4f && std::abs(view.at(1, 3)) < 1.0e-4f,
+          "camera target has no horizontal or vertical view offset");
+    check(std::abs(view.at(2, 3) - static_cast<float>(test_camera.distance)) < 1.0e-4f,
+          "camera target is in front of the camera by the orbit distance");
+    check(projection.at(0, 0) > 0.0f && projection.at(1, 1) > 0.0f &&
+          projection.at(2, 2) > 0.0f && projection.at(3, 2) == 1.0f,
+          "projection matrix uses perspective with forward-positive depth");
+
+    wf::world::ObjectInstance transform_test_object;
+    transform_test_object.transform.position = {Fixed16::from_double(100.25),
+                                                Fixed16::from_double(-2.0),
+                                                Fixed16::from_double(13.5)};
+    wf::render::EditorCamera precision_camera{};
+    precision_camera.target_x = 100.0;
+    precision_camera.target_y = -2.0;
+    precision_camera.target_z = 13.0;
+    const auto model = wf::render::detail::make_model_matrix(transform_test_object, precision_camera);
+    check(std::abs(model.at(0, 3) - 0.25f) < 1.0e-5f &&
+          std::abs(model.at(1, 3)) < 1.0e-5f &&
+          std::abs(model.at(2, 3) - 0.5f) < 1.0e-5f,
+          "model matrix subtracts camera-relative origin before float conversion");
 
     const auto one = Fixed16::from_int(1);
     const auto half = Fixed16::from_double(0.5);
