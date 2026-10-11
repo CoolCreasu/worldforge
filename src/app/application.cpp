@@ -1,30 +1,34 @@
-#define SDL_MAIN_USE_CALLBACKS 1
+#include "app/application.hpp"
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_main.h>
+#include "editor/editorinput.hpp"
+#include "editor/editorui.hpp"
+#include "editor/sceneeditor.hpp"
 
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlgpu3.h"
 
-#include "editor/EditorInput.hpp"
-#include "editor/EditorState.hpp"
-#include "editor/EditorUI.hpp"
-#include "editor/SceneEditor.hpp"
-
+#include <cstdint>
 #include <filesystem>
-#include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
+namespace wf::app {
+namespace {
 using wf::editor::AppState;
 using wf::editor::build_editor_ui;
 using wf::editor::make_demo_scene;
 using wf::editor::process_event;
 using wf::editor::recalculate_next_id;
+} // namespace
 
-namespace {
-void cleanup(AppState& state) noexcept {
+Application::~Application() {
+    shutdown();
+}
+
+void Application::shutdown() noexcept {
+    AppState& state = state_;
     {
         std::lock_guard<std::mutex> lock(state.event_mutex);
         state.events_closed = true;
@@ -59,30 +63,29 @@ void cleanup(AppState& state) noexcept {
     }
 }
 
-SDL_AppResult fail(AppState& state, const char* action) {
+SDL_AppResult Application::fail(const char* action) {
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s: %s", action, SDL_GetError());
-    cleanup(state);
+    shutdown();
     return SDL_APP_FAILURE;
 }
-} // namespace
-SDL_AppResult SDLCALL SDL_AppInit(void** appstate, int argc, char* argv[]) {
-    SDL_SetAppMetadata("Worldforge", "0.3.1", "org.worldforge.game-tools");
-    auto state = std::make_unique<AppState>();
-    if (argc > 1 && argv && argv[1]) state->scene_path = argv[1];
-    *appstate = state.release();
-    auto& app = *static_cast<AppState*>(*appstate);
 
-    if (!SDL_Init(SDL_INIT_VIDEO)) return fail(app, "SDL_Init failed");
+SDL_AppResult Application::initialize(int argc, char* argv[]) {
+    SDL_SetAppMetadata("Worldforge", "0.3.1", "org.worldforge.game-tools");
+    AppState& app = state_;
+    if (argc > 1 && argv && argv[1]) app.scene_path = argv[1];
+
+    if (!SDL_Init(SDL_INIT_VIDEO)) return fail("SDL_Init failed");
     app.window = SDL_CreateWindow("Worldforge - Primitive World Editor", 1280, 800,
                                   SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
-    if (!app.window) return fail(app, "SDL_CreateWindow failed");
+    if (!app.window) return fail("SDL_CreateWindow failed");
 
     // This checkpoint ships SPIR-V for Vulkan and MSL for Metal. The callback
     // lifecycle is cross-platform; adding DXIL is a follow-up for native D3D12.
     constexpr SDL_GPUShaderFormat shader_formats = SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL;
     app.gpu = SDL_CreateGPUDevice(shader_formats, true, nullptr);
-    if (!app.gpu) return fail(app, "SDL_CreateGPUDevice failed");
-    if (!SDL_ClaimWindowForGPUDevice(app.gpu, app.window)) return fail(app, "SDL_ClaimWindowForGPUDevice failed");
+    if (!app.gpu) return fail("SDL_CreateGPUDevice failed");
+    if (!SDL_ClaimWindowForGPUDevice(app.gpu, app.window))
+        return fail("SDL_ClaimWindowForGPUDevice failed");
     app.window_claimed = true;
     (void)SDL_SetGPUAllowedFramesInFlight(app.gpu, 2);
 
@@ -123,19 +126,23 @@ SDL_AppResult SDLCALL SDL_AppInit(void** appstate, int argc, char* argv[]) {
     style.Colors[ImGuiCol_Button] = ImVec4(0.13f, 0.23f, 0.33f, 1.0f);
     style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.20f, 0.36f, 0.50f, 1.0f);
 
-    if (!ImGui_ImplSDL3_InitForSDLGPU(app.window)) return fail(app, "ImGui SDL3 backend initialization failed");
+    if (!ImGui_ImplSDL3_InitForSDLGPU(app.window))
+        return fail("ImGui SDL3 backend initialization failed");
     app.imgui_platform_initialized = true;
+
     ImGui_ImplSDLGPU3_InitInfo imgui_gpu_info{};
     imgui_gpu_info.Device = app.gpu;
     imgui_gpu_info.ColorTargetFormat = SDL_GetGPUSwapchainTextureFormat(app.gpu, app.window);
     imgui_gpu_info.MSAASamples = SDL_GPU_SAMPLECOUNT_1;
-    if (!ImGui_ImplSDLGPU3_Init(&imgui_gpu_info)) return fail(app, "ImGui SDL_GPU backend initialization failed");
+    if (!ImGui_ImplSDLGPU3_Init(&imgui_gpu_info))
+        return fail("ImGui SDL_GPU backend initialization failed");
     app.imgui_renderer_initialized = true;
 
     std::string renderer_error;
     if (!app.renderer.initialize(app.gpu, app.window, renderer_error)) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Renderer initialization failed: %s", renderer_error.c_str());
-        cleanup(app);
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Renderer initialization failed: %s",
+                     renderer_error.c_str());
+        shutdown();
         return SDL_APP_FAILURE;
     }
     SDL_Log("GPU driver: %s", SDL_GetGPUDeviceDriver(app.gpu));
@@ -143,16 +150,17 @@ SDL_AppResult SDLCALL SDL_AppInit(void** appstate, int argc, char* argv[]) {
     return SDL_APP_CONTINUE;
 }
 
-SDL_AppResult SDLCALL SDL_AppEvent(void* appstate, SDL_Event* event) {
-    auto* app = static_cast<AppState*>(appstate);
-    if (!app || !event) return SDL_APP_CONTINUE;
-    std::lock_guard<std::mutex> lock(app->event_mutex);
-    if (!app->events_closed) app->pending_events.push_back(*event);
+SDL_AppResult Application::handle_event(const SDL_Event* event) {
+    if (!event) return SDL_APP_CONTINUE;
+
+    AppState& app = state_;
+    std::lock_guard<std::mutex> lock(app.event_mutex);
+    if (!app.events_closed) app.pending_events.push_back(*event);
     return SDL_APP_CONTINUE;
 }
 
-SDL_AppResult SDLCALL SDL_AppIterate(void* appstate) {
-    auto& app = *static_cast<AppState*>(appstate);
+SDL_AppResult Application::iterate() {
+    AppState& app = state_;
     std::vector<SDL_Event> events;
     {
         std::lock_guard<std::mutex> lock(app.event_mutex);
@@ -172,7 +180,8 @@ SDL_AppResult SDLCALL SDL_AppIterate(void* appstate) {
     ImGui::Render();
     ImDrawData* draw_data = ImGui::GetDrawData();
 
-    int pixel_width = 0, pixel_height = 0;
+    int pixel_width = 0;
+    int pixel_height = 0;
     if (!SDL_GetWindowSizeInPixels(app.window, &pixel_width, &pixel_height)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_GetWindowSizeInPixels: %s", SDL_GetError());
         return SDL_APP_FAILURE;
@@ -180,7 +189,8 @@ SDL_AppResult SDLCALL SDL_AppIterate(void* appstate) {
     if (pixel_width > 0 && pixel_height > 0) {
         std::string error;
         if (!app.renderer.prepare(static_cast<std::uint32_t>(pixel_width),
-                                  static_cast<std::uint32_t>(pixel_height), app.scene.objects.size(), error)) {
+                                  static_cast<std::uint32_t>(pixel_height),
+                                  app.scene.objects.size(), error)) {
             SDL_LogError(SDL_LOG_CATEGORY_GPU, "Renderer prepare failed: %s", error.c_str());
             return SDL_APP_FAILURE;
         }
@@ -191,8 +201,10 @@ SDL_AppResult SDLCALL SDL_AppIterate(void* appstate) {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "SDL_AcquireGPUCommandBuffer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+
     SDL_GPUTexture* swapchain_texture = nullptr;
-    Uint32 swapchain_width = 0, swapchain_height = 0;
+    Uint32 swapchain_width = 0;
+    Uint32 swapchain_height = 0;
     if (!SDL_WaitAndAcquireGPUSwapchainTexture(command_buffer, app.window, &swapchain_texture,
                                                &swapchain_width, &swapchain_height)) {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "SDL_WaitAndAcquireGPUSwapchainTexture: %s", SDL_GetError());
@@ -228,6 +240,7 @@ SDL_AppResult SDLCALL SDL_AppIterate(void* appstate) {
         ImGui_ImplSDLGPU3_RenderDrawData(draw_data, command_buffer, ui_pass);
         SDL_EndGPURenderPass(ui_pass);
     }
+
     if (!SDL_SubmitGPUCommandBuffer(command_buffer)) {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "SDL_SubmitGPUCommandBuffer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
@@ -235,11 +248,4 @@ SDL_AppResult SDLCALL SDL_AppIterate(void* appstate) {
     return SDL_APP_CONTINUE;
 }
 
-void SDLCALL SDL_AppQuit(void* appstate, SDL_AppResult result) {
-    (void)result;
-    auto* app = static_cast<AppState*>(appstate);
-    if (!app) return;
-    cleanup(*app);
-    delete app;
-}
-
+} // namespace wf::app

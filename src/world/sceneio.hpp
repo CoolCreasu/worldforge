@@ -1,6 +1,6 @@
 #pragma once
 
-#include "world/SceneDocument.hpp"
+#include "world/scenedocument.hpp"
 
 #include <filesystem>
 #include <string>

@@ -1,6 +1,6 @@
-#include "render/RenderTransforms.hpp"
+#include "render/rendertransforms.hpp"
 
-#include "math/Transform.hpp"
+#include "math/transform.hpp"
 
 #include <algorithm>
 #include <cmath>

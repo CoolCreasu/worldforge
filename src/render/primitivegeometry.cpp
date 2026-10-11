@@ -1,7 +1,7 @@
-#include "render/PrimitiveGeometry.hpp"
-#include "render/PrimitiveRenderer.hpp"
+#include "render/primitivegeometry.hpp"
+#include "render/primitiverenderer.hpp"
 
-#include "render/ViewportCoordinates.hpp"
+#include "render/viewportcoordinates.hpp"
 
 #include <algorithm>
 #include <array>

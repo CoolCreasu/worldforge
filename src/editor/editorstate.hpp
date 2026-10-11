@@ -1,7 +1,7 @@
 #pragma once
 
-#include "render/PrimitiveRenderer.hpp"
-#include "world/SceneIO.hpp"
+#include "render/primitiverenderer.hpp"
+#include "world/sceneio.hpp"
 
 #include <SDL3/SDL.h>
 

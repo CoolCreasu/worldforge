@@ -1,4 +1,4 @@
-#include "world/SceneIO.hpp"
+#include "world/sceneio.hpp"
 
 #include <fstream>
 #include <iomanip>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math/Fixed16.hpp"
+#include "math/fixed16.hpp"
 
 #include <cstdint>
 
