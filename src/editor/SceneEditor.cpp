@@ -1,6 +1,7 @@
 #include "editor/SceneEditor.hpp"
 
 #include "math/Fixed16.hpp"
+#include "math/Transform.hpp"
 
 #include <algorithm>
 #include <cmath>

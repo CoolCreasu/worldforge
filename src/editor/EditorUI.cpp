@@ -2,6 +2,8 @@
 
 #include "editor/SceneEditor.hpp"
 
+#include "math/Transform.hpp"
+
 #include "imgui.h"
 
 #include <algorithm>

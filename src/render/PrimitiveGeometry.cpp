@@ -2,6 +2,8 @@
 
 #include "render/ViewportCoordinates.hpp"
 
+#include "math/Transform.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
