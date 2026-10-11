@@ -108,6 +108,7 @@ if(WORLDFORGE_BUILD_APP)
         src/editor/EditorUI.cpp
         src/render/PrimitiveRenderer.cpp
         src/render/PrimitiveGeometry.cpp
+        src/render/GBuffer.cpp
     )
     target_link_libraries(worldforge PRIVATE
         SDL3::SDL3

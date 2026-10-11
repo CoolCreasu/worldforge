@@ -1,0 +1,18 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+using namespace metal;
+
+struct GeometryOutput {
+    float4 albedo [[color(0)]];
+    float4 normal [[color(1)]];
+};
+struct GeometryInput {
+    float4 color [[user(locn0)]];
+    float3 viewNormal [[user(locn1)]];
+};
+fragment GeometryOutput main0(GeometryInput input [[stage_in]]) {
+    GeometryOutput output = {};
+    output.albedo = input.color;
+    output.normal = float4(normalize(input.viewNormal) * 0.5 + 0.5, 1.0);
+    return output;
+}

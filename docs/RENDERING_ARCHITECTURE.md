@@ -12,7 +12,7 @@ This document records rendering decisions for the game-specific renderer. These 
 
 ## Deferred rendering: initial layout
 
-The main scene renderer will use a geometry pass that fills a small G-buffer, followed by one or more lighting/composition passes. The initial G-buffer will have:
+The scene renderer uses a geometry pass that fills a small G-buffer, followed by a lighting/composition pass. The initial G-buffer will have:
 
 1. **Base color/albedo target** — material color, with an explicit and consistent linear/sRGB policy.
 2. **Normal target** — normalized surface normals in a documented coordinate space. The initial implementation should use view-space normals so the lighting pass can reconstruct view-space position from depth and keep lighting calculations coherent.
@@ -59,8 +59,8 @@ Resize the G-buffer textures with the viewport, not necessarily the full window.
 ## Migration sequence
 
 1. Keep the CPU-projected grid separate from the local-space cube mesh; this first GPU-transform step is implemented.
-2. Add an offscreen albedo target, normal target, and sampleable depth texture.
-3. Add a full-screen deferred-lighting pass and composite ImGui afterward.
+2. The initial offscreen albedo target, normal target, and sampleable depth texture are implemented in `GBuffer`.
+3. A fullscreen deferred composition pass currently applies simple directional diffuse lighting; improve the lighting model and material policy before adding metallic/roughness data.
 4. Add a packed material-properties target only when the game's actual material properties need it.
 5. Add mesh import and prefab material assignment against the renderer's semantic material model.
 
@@ -71,3 +71,5 @@ Resize the G-buffer textures with the viewport, not necessarily the full window.
 - `PrimitiveGeometry` builds editor grid vertices and the local-space cube mesh.
 - `RenderTransforms` constructs model, view, and projection matrices without depending on SDL, so the math is tested by the dependency-free core suite.
 - The vertex shader applies transforms; scene documents remain independent of GPU types.
+- `GBuffer` owns the albedo, normal, and sampleable depth textures, including resize and failure cleanup. `PrimitiveRenderer` coordinates the geometry pass and the fullscreen composition pass.
+- The first deferred composition shader uses a small ambient term plus directional diffuse lighting; it is a validation baseline, not the eventual PBR model.
