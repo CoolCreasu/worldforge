@@ -1,6 +1,6 @@
 #pragma once
 
-#include "render/PrimitiveRenderer.hpp"
+#include "render/EditorCamera.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -18,18 +18,31 @@ struct Vertex final {
 };
 
 static_assert(sizeof(Vertex) == 16, "GPU vertex layout must remain 16 bytes");
+inline constexpr std::uint32_t kCubeVertexCount = 36;
 
 } // namespace wf::render::detail
 
 namespace wf::render {
 
-// CPU-side primitive mesh generation is isolated from SDL_GPU resource management.
-// The prototype currently generates the grid and cube vertices in clip space.
-void build_primitive_vertices(std::vector<detail::Vertex>& vertices,
-                              const world::SceneDocument& scene,
-                              world::ObjectId selected_object,
-                              const EditorCamera& camera,
-                              float width,
-                              float height);
+struct SceneViewport final {
+    float x = 0.0f;
+    float y = 0.0f;
+    float width = 1.0f;
+    float height = 1.0f;
+};
+
+// Build the editor grid in clip space. Its CPU projection is intentional because
+// grid lines are expanded to a stable thickness in screen pixels.
+void build_grid_vertices(std::vector<detail::Vertex>& vertices,
+                         const EditorCamera& camera,
+                         float window_width,
+                         float window_height);
+
+// Append the unit-cube mesh in local space. The GPU applies each object's
+// model transform and the camera view/projection matrices.
+void append_unit_cube_vertices(std::vector<detail::Vertex>& vertices, bool selected);
+
+// The scene is rendered inside the client area left open by editor chrome.
+[[nodiscard]] SceneViewport make_scene_viewport(float window_width, float window_height) noexcept;
 
 } // namespace wf::render

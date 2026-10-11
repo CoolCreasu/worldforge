@@ -14,6 +14,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Scene data and fixed-point math deliberately have no SDL or editor-UI dependency.
 add_library(worldforge_core STATIC
     src/world/SceneIO.cpp
+    src/render/RenderTransforms.cpp
 )
 target_include_directories(worldforge_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_compile_features(worldforge_core PUBLIC cxx_std_20)

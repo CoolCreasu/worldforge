@@ -1,15 +1,13 @@
 #include "render/PrimitiveGeometry.hpp"
+#include "render/PrimitiveRenderer.hpp"
 
 #include "render/ViewportCoordinates.hpp"
-
-#include "math/Transform.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <vector>
 
 namespace wf::render {
@@ -111,51 +109,6 @@ struct ViewLayout final {
     return {x, y, depth, inside};
 }
 
-[[nodiscard]] Vec3 rotate_by_quaternion(Vec3 v, const math::QuatQ30& q) noexcept {
-    constexpr double q_scale = static_cast<double>(math::QuatQ30::one_raw);
-    const float qx = static_cast<float>(static_cast<double>(q.x) / q_scale);
-    const float qy = static_cast<float>(static_cast<double>(q.y) / q_scale);
-    const float qz = static_cast<float>(static_cast<double>(q.z) / q_scale);
-    const float qw = static_cast<float>(static_cast<double>(q.w) / q_scale);
-    const Vec3 qv{qx, qy, qz};
-    const Vec3 t = mul(cross(qv, v), 2.0f);
-    return add(v, add(mul(t, qw), cross(qv, t)));
-}
-
-[[nodiscard]] Vec3 object_point(const world::ObjectInstance& object, Vec3 local,
-                                const CameraBasis& camera) noexcept {
-    local.x *= static_cast<float>(object.transform.scale.x.to_double());
-    local.y *= static_cast<float>(object.transform.scale.y.to_double());
-    local.z *= static_cast<float>(object.transform.scale.z.to_double());
-    local = rotate_by_quaternion(local, object.transform.rotation);
-    // Subtract the camera's world origin in double precision before converting to float.
-    return add(local, {
-        static_cast<float>(object.transform.position.x.to_double() - camera.origin_x),
-        static_cast<float>(object.transform.position.y.to_double() - camera.origin_y),
-        static_cast<float>(object.transform.position.z.to_double() - camera.origin_z)});
-}
-
-void append_triangle(std::vector<Vertex>& vertices, Vec3 a, Vec3 b, Vec3 c, Color color,
-                     const CameraBasis& camera, const ViewLayout& layout) {
-    // Triangles crossing the near plane are omitted in this first editor renderer.
-    // That is visually preferable to feeding huge projected coordinates to the GPU.
-    const Vec3 rel_a = sub(a, camera.eye), rel_b = sub(b, camera.eye), rel_c = sub(c, camera.eye);
-    if (dot(rel_a, camera.forward) <= kNearPlane || dot(rel_b, camera.forward) <= kNearPlane ||
-        dot(rel_c, camera.forward) <= kNearPlane) return;
-    const ProjectedPoint pa = project_point(a, camera, layout);
-    const ProjectedPoint pb = project_point(b, camera, layout);
-    const ProjectedPoint pc = project_point(c, camera, layout);
-    vertices.push_back({pa.x, pa.y, pa.depth, color.r, color.g, color.b, color.a});
-    vertices.push_back({pb.x, pb.y, pb.depth, color.r, color.g, color.b, color.a});
-    vertices.push_back({pc.x, pc.y, pc.depth, color.r, color.g, color.b, color.a});
-}
-
-void append_world_quad(std::vector<Vertex>& vertices, Vec3 a, Vec3 b, Vec3 c, Vec3 d,
-                       Color color, const CameraBasis& camera, const ViewLayout& layout) {
-    append_triangle(vertices, a, b, c, color, camera, layout);
-    append_triangle(vertices, a, c, d, color, camera, layout);
-}
-
 // Grid strips are extruded in screen space instead of relying on a very thin
 // world-space width. A ground-plane strip can become sub-pixel when the camera
 // skims across the plane; screen-space extrusion keeps both grid directions legible.
@@ -243,9 +196,24 @@ void append_grid(std::vector<Vertex>& vertices, const CameraBasis& camera, const
                          {extent, relative_ground_y + 0.001f, z}, z_color, z_width, camera, layout);
     }
 }
-void append_cube(std::vector<Vertex>& vertices, const world::ObjectInstance& object,
-                 bool selected, const CameraBasis& camera, const ViewLayout& layout) {
-    // A unit cube with its origin on the bottom face, so y=0 means resting on the grid.
+} // namespace
+
+SceneViewport make_scene_viewport(float window_width, float window_height) noexcept {
+    const ViewLayout layout = make_layout(window_width, window_height);
+    return {0.0f, layout.top, layout.viewport_width, layout.viewport_height};
+}
+
+void build_grid_vertices(std::vector<detail::Vertex>& vertices,
+                         const EditorCamera& camera,
+                         float window_width,
+                         float window_height) {
+    const ViewLayout layout = make_layout(window_width, window_height);
+    const CameraBasis basis = make_camera(camera);
+    append_grid(vertices, basis, layout);
+}
+
+void append_unit_cube_vertices(std::vector<detail::Vertex>& vertices, bool selected) {
+    // Unit cube origin is on the bottom face so y=0 rests on the editor grid.
     static constexpr Vec3 faces[6][4] = {
         {{-0.5f,1.0f,-0.5f},{0.5f,1.0f,-0.5f},{0.5f,1.0f,0.5f},{-0.5f,1.0f,0.5f}},
         {{-0.5f,0.0f,0.5f},{0.5f,0.0f,0.5f},{0.5f,0.0f,-0.5f},{-0.5f,0.0f,-0.5f}},
@@ -254,38 +222,31 @@ void append_cube(std::vector<Vertex>& vertices, const world::ObjectInstance& obj
         {{-0.5f,0.0f,0.5f},{-0.5f,0.0f,-0.5f},{-0.5f,1.0f,-0.5f},{-0.5f,1.0f,0.5f}},
         {{0.5f,0.0f,-0.5f},{0.5f,0.0f,0.5f},{0.5f,1.0f,0.5f},{0.5f,1.0f,-0.5f}}
     };
-    static constexpr Color shades[6] = {
+    static constexpr Color face_colors[6] = {
         {94, 158, 230, 255}, {33, 48, 65, 255}, {65, 125, 188, 255},
         {50, 101, 156, 255}, {45, 88, 137, 255}, {72, 135, 198, 255}
     };
-    for (std::size_t fi = 0; fi < 6; ++fi) {
-        Color color = shades[fi];
-        if (selected) {
-            const auto lift = [](std::uint8_t base) {
-                return static_cast<std::uint8_t>(std::min(255, static_cast<int>(base) / 2 + 128));
-            };
-            color = {lift(color.r), lift(color.g), static_cast<std::uint8_t>(std::min(255, color.b + 24)), 255};
-        }
-        const Vec3 a = object_point(object, faces[fi][0], camera);
-        const Vec3 b = object_point(object, faces[fi][1], camera);
-        const Vec3 c = object_point(object, faces[fi][2], camera);
-        const Vec3 d = object_point(object, faces[fi][3], camera);
-        append_world_quad(vertices, a, b, c, d, color, camera, layout);
-    }
-}
-} // namespace
 
-void build_primitive_vertices(std::vector<detail::Vertex>& vertices,
-                              const world::SceneDocument& scene,
-                              world::ObjectId selected_object,
-                              const EditorCamera& camera,
-                              float width,
-                              float height) {
-    const ViewLayout layout = make_layout(width, height);
-    const CameraBasis basis = make_camera(camera);
-    append_grid(vertices, basis, layout);
-    for (const auto& object : scene.objects) {
-        append_cube(vertices, object, object.id == selected_object, basis, layout);
+    for (std::size_t face = 0; face < 6; ++face) {
+        Color color = face_colors[face];
+        if (selected) {
+            const auto lift = [](std::uint8_t channel) {
+                return static_cast<std::uint8_t>(std::min(255, static_cast<int>(channel) / 2 + 128));
+            };
+            color = {lift(color.r), lift(color.g),
+                     static_cast<std::uint8_t>(std::min(255, static_cast<int>(color.b) + 24)), 255};
+        }
+
+        const Vec3 a = faces[face][0];
+        const Vec3 b = faces[face][1];
+        const Vec3 c = faces[face][2];
+        const Vec3 d = faces[face][3];
+        vertices.push_back({a.x, a.y, a.z, color.r, color.g, color.b, color.a});
+        vertices.push_back({b.x, b.y, b.z, color.r, color.g, color.b, color.a});
+        vertices.push_back({c.x, c.y, c.z, color.r, color.g, color.b, color.a});
+        vertices.push_back({a.x, a.y, a.z, color.r, color.g, color.b, color.a});
+        vertices.push_back({c.x, c.y, c.z, color.r, color.g, color.b, color.a});
+        vertices.push_back({d.x, d.y, d.z, color.r, color.g, color.b, color.a});
     }
 }
 

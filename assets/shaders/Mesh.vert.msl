@@ -1,0 +1,23 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+using namespace metal;
+
+struct VertexInput {
+    float3 position [[attribute(0)]];
+    float4 color [[attribute(1)]];
+};
+struct VertexOutput {
+    float4 position [[position]];
+    float4 color [[user(locn0)]];
+};
+
+vertex VertexOutput main0(
+    VertexInput input [[stage_in]],
+    constant float4x4& model [[buffer(0)]],
+    constant float4x4& view [[buffer(1)]],
+    constant float4x4& projection [[buffer(2)]]) {
+    VertexOutput output = {};
+    output.position = projection * view * model * float4(input.position, 1.0);
+    output.color = input.color;
+    return output;
+}

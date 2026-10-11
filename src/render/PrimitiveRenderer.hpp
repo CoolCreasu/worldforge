@@ -1,6 +1,7 @@
 #pragma once
 
 #include "world/SceneDocument.hpp"
+#include "render/EditorCamera.hpp"
 
 #include <SDL3/SDL.h>
 
@@ -10,15 +11,6 @@
 #include <string>
 
 namespace wf::render {
-
-struct EditorCamera final {
-    double target_x = 0.0;
-    double target_y = 0.0;
-    double target_z = 0.0;
-    double distance = 14.0;
-    double yaw = 0.6747409422235527;
-    double pitch = 0.4993467216801301;
-};
 
 struct ProjectedPoint final {
     float x = 0.0f;

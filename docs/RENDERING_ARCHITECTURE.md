@@ -7,7 +7,7 @@ This document records rendering decisions for the game-specific renderer. These 
 - World positions are stored as signed Q16.16 values; rotations are stored as Q2.30 quaternions.
 - The editor camera and its working calculations may use floating point. Saved world transforms remain fixed-point.
 - Every frame, choose a camera-relative origin (initially the camera position or orbit target). Subtract this origin from fixed-point world positions in a sufficiently wide representation **before** converting the relative displacement to float. Never convert large absolute world positions to float and then subtract.
-- The real mesh renderer will submit local vertices plus camera-relative model transforms to the GPU. Projection belongs in the vertex shader; the CPU-projected vertices in `PrimitiveRenderer` are temporary prototype code only.
+- Cube meshes now remain in local space, with model, view, and projection matrices sent through SDL_GPU vertex uniforms. Model translations subtract the camera target in double precision before conversion to float. The editor grid intentionally remains CPU-projected so its line widths stay consistent in pixels.
 - SDL_GPU uses Y-up normalized device coordinates but top-left-origin viewport coordinates. Any projection from screen-space pixel coordinates back into clip space must invert Y.
 
 ## Deferred rendering: initial layout
@@ -58,9 +58,16 @@ Resize the G-buffer textures with the viewport, not necessarily the full window.
 
 ## Migration sequence
 
-1. Keep this primitive renderer working while fixing editor camera and world interaction.
-2. Introduce local mesh vertices, camera-relative model transforms, and a regular GPU vertex shader.
-3. Add an offscreen albedo target, normal target, and sampleable depth texture.
-4. Add a full-screen deferred-lighting pass and composite ImGui afterward.
-5. Add a packed material-properties target only when the game's actual material properties need it.
-6. Add mesh import and prefab material assignment against the renderer's semantic material model.
+1. Keep the CPU-projected grid separate from the local-space cube mesh; this first GPU-transform step is implemented.
+2. Add an offscreen albedo target, normal target, and sampleable depth texture.
+3. Add a full-screen deferred-lighting pass and composite ImGui afterward.
+4. Add a packed material-properties target only when the game's actual material properties need it.
+5. Add mesh import and prefab material assignment against the renderer's semantic material model.
+
+
+## Code organization
+
+- `PrimitiveRenderer` owns SDL_GPU resources and orchestrates draw calls.
+- `PrimitiveGeometry` builds editor grid vertices and the local-space cube mesh.
+- `RenderTransforms` constructs model, view, and projection matrices without depending on SDL, so the math is tested by the dependency-free core suite.
+- The vertex shader applies transforms; scene documents remain independent of GPU types.

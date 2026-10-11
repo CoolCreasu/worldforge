@@ -9,6 +9,29 @@ permissions:
   contents: read
 
 jobs:
+  compile-mesh-shader:
+    name: Compile and validate Vulkan mesh shader
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install SPIR-V shader compiler and validator
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes glslang-tools spirv-tools
+
+      - name: Compile, compare, and validate shader
+        run: |
+          mkdir -p build/shaders
+          glslangValidator -V --target-env vulkan1.0 -S vert \
+            -o build/shaders/Mesh.vert.spv assets/shaders/Mesh.vert.glsl
+          cmp --silent build/shaders/Mesh.vert.spv assets/shaders/Mesh.vert.spv || {
+            echo "Mesh.vert.spv is stale. Regenerate it from Mesh.vert.glsl and include the binary in this change."
+            exit 1
+          }
+          spirv-val --target-env vulkan1.0 assets/shaders/Mesh.vert.spv
+
   core-tests:
     name: Core tests (${{ matrix.os }})
     strategy:
