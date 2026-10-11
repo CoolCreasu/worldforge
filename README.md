@@ -88,6 +88,10 @@ cmake -S . -B build -DWORLDFORGE_IMGUI_DIR=/path/to/imgui
 
 The source tree must contain `imgui.cpp` and `backends/imgui_impl_sdlgpu3.cpp`.
 
+## Code layout
+
+The implementation is split by responsibility: SDL lifecycle in `src/app/Main.cpp`, editor state and interaction in `src/editor/`, GPU resource management in `src/render/PrimitiveRenderer.cpp`, and transitional CPU geometry/picking in `src/render/PrimitiveGeometry.cpp`. See [Code structure](docs/CODE_STRUCTURE.md) for the module map and intended boundaries.
+
 ## Controls
 
 | Input | Action |

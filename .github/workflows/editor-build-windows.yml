@@ -1,0 +1,26 @@
+name: Editor application build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  editor-build:
+    name: Build editor (Windows / MSVC)
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure application and core tests
+        run: cmake -S . -B build -DWORLDFORGE_BUILD_APP=ON -DWORLDFORGE_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build editor and tests
+        run: cmake --build build --config Debug --parallel 2
+
+      - name: Run core tests
+        run: ctest --test-dir build -C Debug --output-on-failure
