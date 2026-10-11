@@ -1,0 +1,15 @@
+* text=auto eol=lf
+
+# Compiled shader bytecode must not be line-ending converted.
+*.spv binary
+
+# Keep authored scene data and source files consistently formatted.
+*.world text eol=lf
+*.cpp text eol=lf
+*.hpp text eol=lf
+*.h text eol=lf
+*.hlsl text eol=lf
+*.msl text eol=lf
+*.md text eol=lf
+*.cmake text eol=lf
+CMakeLists.txt text eol=lf

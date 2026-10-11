@@ -1,0 +1,43 @@
+# CMake build output
+/build/
+/build-*/
+/cmake-build-*/
+/out/
+/[Dd]ebug/
+/[Rr]elease/
+/[Xx]64/
+/[Xx]86/
+/CMakeFiles/
+/CMakeCache.txt
+/Testing/
+/cmake_install.cmake
+/compile_commands.json
+
+# Visual Studio / IDE state
+/.vs/
+CMakeUserPresets.json
+*.suo
+*.user
+*.VC.db
+*.VC.VC.opendb
+
+# Generated / temporary scene files
+*.world.tmp
+*.world.bak
+*.tmp
+*.bak
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Compiled artifacts
+*.obj
+*.o
+*.lib
+*.a
+*.dll
+*.exe
+*.pdb
+*.ilk
