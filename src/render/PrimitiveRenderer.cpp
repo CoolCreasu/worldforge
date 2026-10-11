@@ -1,4 +1,5 @@
 #include "render/PrimitiveRenderer.hpp"
+#include "render/ViewportCoordinates.hpp"
 
 #include <algorithm>
 #include <array>
@@ -103,11 +104,9 @@ struct ViewLayout final {
     const float px = (ndc_x * 0.5f + 0.5f) * layout.viewport_width;
     const float py = layout.top + (0.5f - ndc_y * 0.5f) * layout.viewport_height;
     const float x = 2.0f * px / layout.width - 1.0f;
-    // SDL_GPU standardizes the viewport so NDC y=-1 maps to the top edge.
-    // SDL_GPU clip space is Y-up, while our projected window coordinates are
-    // top-left-origin. Convert screen Y back to clip Y with an inversion.
-    // Mapping top-of-window to NDC -1 flips the rendered view vertically.
-    const float y = 1.0f - 2.0f * py / layout.height;
+    // SDL_GPU viewport coordinates use NDC Y=-1 at the top edge. Window Y is
+    // top-left-origin, so the conversion must preserve top-to-top and bottom-to-bottom.
+    const float y = viewport::clip_y_from_window_y(py, layout.height);
     const bool inside = ndc_x >= -1.5f && ndc_x <= 1.5f && ndc_y >= -1.5f && ndc_y <= 1.5f &&
                         view_z < kFarPlane;
     return {x, y, depth, inside};
@@ -429,7 +428,7 @@ ProjectedPoint PrimitiveRenderer::project_to_window(double x, double y, double z
                                   static_cast<float>(z-camera.target_z)},basis,layout);
     // UI and picking coordinates are in top-left-origin window points.
     const float screen_x = (p.x+1.0f)*0.5f*static_cast<float>(width);
-    const float screen_y = (p.y+1.0f)*0.5f*static_cast<float>(height);
+    const float screen_y = viewport::window_y_from_clip_y(p.y, static_cast<float>(height));
     return {screen_x,screen_y,p.depth,p.visible};
 }
 
